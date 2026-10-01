@@ -145,14 +145,24 @@ function saveMember(){
   if(sel)Object.assign(D.members.find(x=>x.id==sel),o);else D.members.push({id:uid(),...o});
   sel=null;save();render()}
 function delMember(id){if(admin&&confirm(nm(id)+' 회원을 삭제할까요? (기존 대회 기록은 남습니다)')){D.members=D.members.filter(m=>m.id!=id);save();render()}}
+let q='';
+function srchBox(){let my='';try{my=localStorage.getItem('pg_my')||''}catch(x){}
+  const mm=my&&D.members.find(x=>x.id==my);
+  return`<div class="card"><h3>🔍 내 기록 찾기</h3><input id="qs" placeholder="이름 또는 나이 (예: 홍길동, 72)" value="${e(q)}" oninput="q=this.value;$('#qr2').innerHTML=srch()"><div id="qr2">${srch()}</div>${mm?`<button class="b" style="margin-top:8px" onclick="sel='${mm.id}';render()">⭐ 내 기록 바로 보기 (${e(mm.name)})</button>`:''}</div>`}
+function srch(){const t=q.trim().replace(/\s/g,'');if(!t)return'<div class="sm">이름이나 나이를 넣으면 개인 성장 추이를 볼 수 있어요.</div>';
+  const n=/^\d+$/.test(t);
+  const r=D.members.filter(m=>n?(t.length==6?(m.birth||'').replace(/-/g,'').slice(2)==t:String(age(m.birth))==t):m.name.replace(/\s/g,'').includes(t));
+  return r.map(m=>{const s=stat(m.id);return`<div class="li" onclick="pick('${m.id}')"><div class="m"><b>${e(m.name)}</b> <span class="sm">${m.sex||''}${m.birth?' · 만 '+age(m.birth)+'세':''}</span></div><div class="sm">${s.n?s.n+'회 · 평균 '+s.avg.toFixed(1):'기록 없음'}</div></div>`}).join('')||'<div class="sm">찾는 회원이 없어요.</div>'}
+function pick(id){sel=id;render()}
+function setMy(id){try{localStorage.setItem('pg_my',id)}catch(x){};render()}
 function vGrow(){
   if(sel){const m=D.members.find(x=>x.id==sel),s=stat(sel);
-    return`<button class="b g" onclick="sel=null;render()">← 목록</button><div class="card"><h3>${e(m.name)} <span class="sm">${s.n}회 참가</span></h3>${spark(s.h)}${s.n?`<div class="row sm"><span>최저 <b>${s.best}</b></span><span>평균 <b>${s.avg.toFixed(1)}</b></span><span>최근 <b>${s.last}</b></span></div>`:''}${s.gr!=null?`<div class="${s.gr>=0?'up':'dn'}"><b>성장률 ${s.gr>=0?'+':''}${s.gr.toFixed(1)}%</b> <span class="sm">(초기 평균 ${s.first.toFixed(1)} → 최근 평균 ${s.recent.toFixed(1)})</span></div>`:''}${s.h.slice().reverse().map(x=>`<div class="li"><div class="m">${x.d} ${e(x.n)}</div><div class="sm">전체 ${x.rk}/${x.N}위${x.sx?` · ${x.sx} ${x.sk}/${x.sN}위`:''}</div><div class="sc">${x.s}</div></div>`).join('')}</div>`}
+    return`<div class="row"><button class="b g" onclick="sel=null;render()">← 목록</button><button class="b g" onclick="setMy('${m.id}')">⭐ 내 기록으로 저장</button></div><div class="card"><h3>${e(m.name)} <span class="sm">${m.sex||''}${m.birth?' · 만 '+age(m.birth)+'세':''} · ${s.n}회 참가</span></h3>${s.n?'':'<div class="sm">아직 참가한 대회 기록이 없어요.</div>'}${spark(s.h)}${s.n?`<div class="row sm"><span>최저 <b>${s.best}</b></span><span>평균 <b>${s.avg.toFixed(1)}</b></span><span>최근 <b>${s.last}</b></span></div>`:''}${s.gr!=null?`<div class="${s.gr>=0?'up':'dn'}"><b>성장률 ${s.gr>=0?'+':''}${s.gr.toFixed(1)}%</b> <span class="sm">(초기 평균 ${s.first.toFixed(1)} → 최근 평균 ${s.recent.toFixed(1)})</span></div>`:''}${s.h.slice().reverse().map(x=>`<div class="li"><div class="m">${x.d} ${e(x.n)}</div><div class="sm">전체 ${x.rk}/${x.N}위${x.sx?` · ${x.sx} ${x.sk}/${x.sN}위`:''}</div><div class="sc">${x.s}</div></div>`).join('')}</div>`}
   const L=D.members.map(m=>({m,s:stat(m.id)})).filter(x=>x.s.n&&(flt=='all'||x.m.sex==flt));
-  if(!L.length)return seg()+'<div class="card sm">해당 기록이 아직 없어요.</div>';
+  if(!L.length)return srchBox()+seg()+'<div class="card sm">해당 기록이 아직 없어요.</div>';
   const G=L.filter(x=>x.s.gr!=null).sort((a,b)=>b.s.gr-a.s.gr),B=[...L].sort((a,b)=>a.s.best-b.s.best).slice(0,3),A=[...L].sort((a,b)=>a.s.avg-b.s.avg).slice(0,3);
   const row=(x,r)=>`<div class="li" onclick="sel='${x.m.id}';render()"><div class="m"><b>${e(x.m.name)}</b> <span class="sm">${x.s.n}회</span></div>${r}</div>`;
-  return seg()+`<div class="card"><h3>🚀 성장률 순위 <span class="sm">(타수가 줄수록 ↑)</span></h3>${G.map((x,i)=>row(x,`<span class="chip">${i+1}위</span><div class="sc ${x.s.gr>=0?'up':'dn'}">${x.s.gr>=0?'+':''}${x.s.gr.toFixed(1)}%</div>`)).join('')||'<div class="sm">2회 이상 참가한 회원이 필요해요</div>'}</div>
+  return srchBox()+seg()+`<div class="card"><h3>🚀 성장률 순위 <span class="sm">(타수가 줄수록 ↑)</span></h3>${G.map((x,i)=>row(x,`<span class="chip">${i+1}위</span><div class="sc ${x.s.gr>=0?'up':'dn'}">${x.s.gr>=0?'+':''}${x.s.gr.toFixed(1)}%</div>`)).join('')||'<div class="sm">2회 이상 참가한 회원이 필요해요</div>'}</div>
   <div class="card"><h3>🎯 최저타 TOP3</h3>${B.map(x=>row(x,`<div class="sc">${x.s.best}타</div>`)).join('')}</div>
   <div class="card"><h3>📊 평균타수 TOP3</h3>${A.map(x=>row(x,`<div class="sc">${x.s.avg.toFixed(1)}</div>`)).join('')}</div>
   <div class="card"><h3>전체 회원</h3>${L.map(x=>row(x,`<div class="sm">평균 ${x.s.avg.toFixed(1)}</div>`)).join('')}</div>`}
