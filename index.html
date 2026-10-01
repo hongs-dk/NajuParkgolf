@@ -30,7 +30,7 @@ button.b{background:var(--pri);color:#fff;border:0;font-weight:700}button.g{back
 <script>
 const $=s=>document.querySelector(s);
 const e=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const REPO='hongs-dk/NajuParkgolf',API='https://api.github.com/repos/'+REPO+'/contents/data.json',DEFPW='4bdae9b98d8df74ac5fd077eb69f242c7f8c1a306f4d1638298c2dd49f6158ba';
+const REPO='hongs-dk/NajuParkgolf',API='https://api.github.com/repos/'+REPO+'/contents/data.json',IT=150000;
 const APP=location.origin+location.pathname;
 let flt='all',admin=false,D={members:[],games:[]},tab='rank',sel=null,edit=null,gsel=null,timer=null,sha=null,etag=null,TK='';
 const LK='pgclub_v1',uid=()=>Math.random().toString(36).slice(2,9),today=()=>new Date().toISOString().slice(0,10);
@@ -41,7 +41,7 @@ const seg=()=>`<div class="row">${[['all','전체'],['남','남자'],['여','여
 function status(t){$('#st').textContent=t;$('#lk').textContent=admin?'🔓':'🔒'}
 const b64e=t=>btoa(unescape(encodeURIComponent(t))),b64d=t=>decodeURIComponent(escape(atob(t.replace(/\n/g,''))));
 const hdr=()=>TK?{Authorization:'token '+TK}:{};
-function stTxt(){return admin?'🔓 관리자 모드 · 자동 저장':TK?'🔑 관리자 기기 · 잠김':'👀 보기 전용 · 실시간 공유'}
+function stTxt(){return admin?'🔓 관리자 모드 · 자동 저장':'👀 보기 전용 · 실시간 공유'}
 function apply(j){if(j===JSON.stringify(D))return;D=JSON.parse(j);norm();try{localStorage.setItem(LK,j)}catch(x){}
   const a=document.activeElement;if(!edit&&(!a||a.tagName!='INPUT'))render()}
 async function pull(){
@@ -69,14 +69,13 @@ async function init(){
   const m=location.hash.match(/k=([\w]+)/);
   if(m){try{localStorage.setItem('pg_tk',m[1])}catch(x){};history.replaceState(null,'',location.pathname)}
   try{TK=localStorage.getItem('pg_tk')||'';const s=localStorage.getItem(LK);if(s)D=JSON.parse(s)}catch(x){}
-  try{admin=!!TK&&localStorage.getItem('pg_admin')==cur()}catch(x){}
+  admin=!!TK;
   norm();status(stTxt());render();
   if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
-  await pull();try{admin=!!TK&&localStorage.getItem('pg_admin')==cur()}catch(x){};status(stTxt());render();
-  setInterval(()=>{if(!document.hidden&&!edit)pull()},TK?30000:90000);
+  await pull();status(stTxt());render();
+  setInterval(()=>{if(!document.hidden&&!edit)pull()},admin?30000:90000);
   document.addEventListener('visibilitychange',()=>{if(!document.hidden)pull()});
 }
-const cur=()=>D.pwh||DEFPW;
 // ---- 계산
 const age=b=>{if(!b)return'';const n=new Date(),d=new Date(b);let a=n.getFullYear()-d.getFullYear();if(n.getMonth()<d.getMonth()||(n.getMonth()==d.getMonth()&&n.getDate()<d.getDate()))a--;return a};
 const bd=id=>{const m=D.members.find(x=>x.id==id);return(m&&m.birth)||'9999-99-99'};
@@ -145,20 +144,38 @@ function vGrow(){
   <div class="card"><h3>🎯 최저타 TOP3</h3>${B.map(x=>row(x,`<div class="sc">${x.s.best}타</div>`)).join('')}</div>
   <div class="card"><h3>📊 평균타수 TOP3</h3>${A.map(x=>row(x,`<div class="sc">${x.s.avg.toFixed(1)}</div>`)).join('')}</div>
   <div class="card"><h3>전체 회원</h3>${L.map(x=>row(x,`<div class="sm">평균 ${x.s.avg.toFixed(1)}</div>`)).join('')}</div>`}
-async function sha256(t){const b=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(t));return[...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join('')}
+// ---- 관리자 패스워드 (패스워드마다 저장 열쇠를 암호화해 보관)
+const u8b=u=>btoa(String.fromCharCode(...u)),bu8=t=>Uint8Array.from(atob(t),c=>c.charCodeAt(0)),te=new TextEncoder();
+async function dkey(pw,salt){const k=await crypto.subtle.importKey('raw',te.encode(pw),'PBKDF2',false,['deriveKey']);return crypto.subtle.deriveKey({name:'PBKDF2',salt,iterations:IT,hash:'SHA-256'},k,{name:'AES-GCM',length:256},false,['encrypt','decrypt'])}
+async function seal(pw,tk){const salt=crypto.getRandomValues(new Uint8Array(16)),iv=crypto.getRandomValues(new Uint8Array(12));
+  const c=await crypto.subtle.encrypt({name:'AES-GCM',iv},await dkey(pw,salt),te.encode(tk));return{s:u8b(salt),i:u8b(iv),c:u8b(new Uint8Array(c))}}
+async function unseal(pw,e){try{const p=await crypto.subtle.decrypt({name:'AES-GCM',iv:bu8(e.i)},await dkey(pw,bu8(e.s)),bu8(e.c));return new TextDecoder().decode(p)}catch(x){return null}}
+const me=()=>{try{return localStorage.getItem('pg_me')||''}catch(x){return''}};
 async function chgPw(){
   const a=$('#np').value.trim();if(a.length<4)return alert('4자리 이상 입력하세요');
-  D.pwh=await sha256(a);try{localStorage.setItem('pg_admin',D.pwh)}catch(x){};save();$('#np').value='';alert('패스워드가 변경되었어요. 다른 관리자 폰은 새 패스워드로 다시 로그인해야 해요.')}
+  const ad=(D.admins||[]).find(x=>x.id==me());if(!ad)return alert('관리자 링크로 접속한 폰은 패스워드를 바꿀 수 없어요. 패스워드로 다시 로그인해 주세요.');
+  status('⏳ 변경 중...');Object.assign(ad,await seal(a,TK));save();$('#np').value='';alert('패스워드가 변경되었어요.')}
+async function addAdmin(){
+  const n=$('#an').value.trim(),p=$('#ap').value.trim();if(!n)return alert('이름을 입력하세요');if(p.length<4)return alert('패스워드는 4자리 이상');
+  status('⏳ 추가 중...');D.admins=D.admins||[];D.admins.push({id:uid(),name:n,...await seal(p,TK)});save();render();alert(n+' 님에게 관리자 권한을 주었어요.\n패스워드를 알려 주세요.')}
+function delAdmin(id){const a=D.admins.find(x=>x.id==id);if(a&&confirm(a.name+' 님의 관리자 권한을 없앨까요?')){D.admins=D.admins.filter(x=>x.id!=id);save();render()}}
 function copyApp(){try{navigator.clipboard.writeText(APP).then(()=>alert('링크가 복사되었어요'))}catch(x){prompt('링크를 복사하세요',APP)}}
 function shareApp(){navigator.share?navigator.share({title:'파크골프 클럽',url:APP}).catch(()=>{}):copyApp()}
 function drawQR(){const q=$('#qr');if(!q||!window.QRCode)return;q.innerHTML='';new QRCode(q,{text:APP,width:180,height:180})}
 async function login(){
-  if(!TK)return alert('이 폰은 관리자 기기로 등록되지 않았어요.\n관리자 전용 링크로 한 번 열어 주세요.');
-  if(await sha256($('#pw').value.trim())!=cur())return alert('패스워드가 맞지 않아요');
-  admin=true;try{localStorage.setItem('pg_admin',cur())}catch(x){};await pull();status(stTxt());render()}
-function logout(){admin=false;try{localStorage.removeItem('pg_admin')}catch(x){};status(stTxt());render()}
-function vMore(){return`<div class="card"><h3>관리자 모드</h3>${admin?'<div class="sm">🔓 관리자로 로그인됨 – 회원·대회 등록/수정이 가능합니다.</div><div class="row"><button class="b g" onclick="logout()">관리자 로그아웃</button></div><h3 style="margin-top:12px">패스워드 변경</h3><div class="row"><input id="np" type="password" inputmode="numeric" placeholder="새 패스워드 (4자리 이상)"><button class="b" style="flex:none;width:auto" onclick="chgPw()">변경</button></div>':!TK?'<div class="sm">👀 보기 전용입니다. 점수 등록·수정은 관리자 폰에서만 할 수 있어요.</div>':'<div class="sm">🔑 관리자 폰입니다. 패스워드를 입력하세요.</div><div class="row"><input id="pw" type="password" inputmode="numeric" placeholder="관리자 패스워드"><button class="b" style="flex:none;width:auto" onclick="login()">입력</button></div>'}</div><div class="card"><h3>데이터 관리</h3><div class="sm">회원 ${D.members.length}명 · 대회 ${D.games.length}회<br>${admin?'클라우드에 자동 저장되고 모든 회원에게 실시간 공유됩니다.':'보기 전용: 데이터는 실시간으로 공유됩니다.'}</div><div class="row"><button class="b g" onclick="backup()">백업 파일 저장</button>${admin?`<button class="b g" onclick="$('#fi').click()">백업 불러오기</button>`:''}</div><input type="file" id="fi" class="hide" accept=".json" onchange="restore(this)"></div><div class="card sm"><b>성장률 계산법</b><br>처음 참가한 대회들의 평균 타수와 최근 대회들의 평균 타수를 비교합니다(최대 3경기씩). 타수가 줄수록 +%입니다.</div><div class="card" style="text-align:center"><h3>📱 앱 공유 · 설치</h3><div id="qr" style="display:inline-block;background:#fff;padding:10px;border-radius:10px"></div><div class="sm" style="margin:8px 0;word-break:break-all">${APP}</div><div class="row"><button class="b g" onclick="shareApp()">링크 공유</button><button class="b g" onclick="copyApp()">링크 복사</button></div><div class="sm" style="text-align:left"><b>홈 화면에 설치</b><br>아이폰: Safari → 공유(⬆️) → 홈 화면에 추가<br>안드로이드: Chrome → ⋮ → 홈 화면에 추가<br>※ 로그인 없이 링크/QR만으로 누구나 볼 수 있어요. 입력은 관리자 패스워드가 필요합니다.</div></div>`}
+  const p=$('#pw').value.trim();if(!p)return;
+  if(!(D.admins||[]).length){await pull()}
+  status('⏳ 확인 중...');
+  for(const a of D.admins||[]){const t=await unseal(p,a);if(t){TK=t;admin=true;try{localStorage.setItem('pg_tk',t);localStorage.setItem('pg_me',a.id)}catch(x){};await pull();status(stTxt());render();return}}
+  status(stTxt());alert('패스워드가 맞지 않아요')}
+function logout(){admin=false;TK='';try{localStorage.removeItem('pg_tk');localStorage.removeItem('pg_me')}catch(x){};status(stTxt());render()}
+function vAdm(){const L=D.admins||[],m=L.find(x=>x.id==me());
+  return`<div class="sm">🔓 ${m?e(m.name)+' 님, ':''}관리자 모드입니다. 회원·대회 등록/수정이 가능합니다.</div><div class="row"><button class="b g" onclick="logout()">관리자 로그아웃</button></div>
+  ${m?`<h3 style="margin-top:12px">내 패스워드 변경</h3><div class="row"><input id="np" type="password" inputmode="numeric" placeholder="새 패스워드 (4자리 이상)"><button class="b" style="flex:none;width:auto" onclick="chgPw()">변경</button></div>`:''}
+  <h3 style="margin-top:12px">관리자 목록</h3>${L.map(a=>`<div class="li"><div class="m">${e(a.name)}${a.id==me()?' <span class="chip">나</span>':''}</div>${a.main||a.id==me()?'':`<button class="d" onclick="delAdmin('${a.id}')">권한 삭제</button>`}</div>`).join('')}
+  <h3 style="margin-top:12px">관리자 추가</h3><div class="sm">입력을 맡길 분의 이름과 그분이 쓸 패스워드를 정해 주세요.</div><div class="row"><input id="an" placeholder="이름"><input id="ap" type="password" inputmode="numeric" placeholder="패스워드"></div><button class="b" onclick="addAdmin()">관리자 권한 주기</button>`}
+function vMore(){return`<div class="card"><h3>관리자 모드</h3>${admin?vAdm():'<div class="sm">점수 등록·수정은 관리자만 할 수 있어요. 관리자 패스워드를 입력하세요.</div><div class="row"><input id="pw" type="password" inputmode="numeric" placeholder="관리자 패스워드" onkeydown="if(event.key==\'Enter\')login()"><button class="b" style="flex:none;width:auto" onclick="login()">입력</button></div>'}</div><div class="card"><h3>데이터 관리</h3><div class="sm">회원 ${D.members.length}명 · 대회 ${D.games.length}회<br>${admin?'클라우드에 자동 저장되고 모든 회원에게 실시간 공유됩니다.':'보기 전용: 데이터는 실시간으로 공유됩니다.'}</div><div class="row"><button class="b g" onclick="backup()">백업 파일 저장</button>${admin?`<button class="b g" onclick="$('#fi').click()">백업 불러오기</button>`:''}</div><input type="file" id="fi" class="hide" accept=".json" onchange="restore(this)"></div><div class="card sm"><b>성장률 계산법</b><br>처음 참가한 대회들의 평균 타수와 최근 대회들의 평균 타수를 비교합니다(최대 3경기씩). 타수가 줄수록 +%입니다.</div><div class="card" style="text-align:center"><h3>📱 앱 공유 · 설치</h3><div id="qr" style="display:inline-block;background:#fff;padding:10px;border-radius:10px"></div><div class="sm" style="margin:8px 0;word-break:break-all">${APP}</div><div class="row"><button class="b g" onclick="shareApp()">링크 공유</button><button class="b g" onclick="copyApp()">링크 복사</button></div><div class="sm" style="text-align:left"><b>홈 화면에 설치</b><br>아이폰: Safari → 공유(⬆️) → 홈 화면에 추가<br>안드로이드: Chrome → ⋮ → 홈 화면에 추가<br>※ 로그인 없이 링크/QR만으로 누구나 볼 수 있어요. 입력은 관리자 패스워드가 필요합니다.</div></div>`}
 function backup(){const t=JSON.stringify(D,null,1),a=document.createElement('a');a.href=URL.createObjectURL(new Blob([t],{type:'application/json'}));a.download='parkgolf_'+today()+'.json';a.click()}
-function restore(i){if(!admin)return;const f=i.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{try{const j=JSON.parse(r.result);if(!j.members||!j.games)throw 0;if(confirm('현재 데이터를 백업 파일로 덮어쓸까요?')){D=j;save();render()}}catch(x){alert('올바른 백업 파일이 아니에요')}};r.readAsText(f)}
+function restore(i){if(!admin)return;const f=i.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{try{const j=JSON.parse(r.result);if(!j.members||!j.games)throw 0;if(confirm('현재 데이터를 백업 파일로 덮어쓸까요?')){j.admins=D.admins;delete j.pwh;D=j;save();render()}}catch(x){alert('올바른 백업 파일이 아니에요')}};r.readAsText(f)}
 init();
 </script></body></html>
