@@ -125,23 +125,25 @@ function dname(id){const m=D.members.find(x=>x.id==id);if(!m)return'(탈퇴)';
   const dup=D.members.filter(x=>x.name==m.name).length>1;return m.name+(dup&&m.birth?'('+m.birth.slice(0,4)+')':'')}
 async function shot(id){
   const g=D.games.find(x=>x.id==id);if(!g)return;const L=ranked(g);
-  const W=1080,P=60,RH=78,top=250,H=top+L.length*RH+130,c=document.createElement('canvas');c.width=W;c.height=H;
+  const W=1080,P=50,RH=120,top=380,H=top+L.length*RH+120,c=document.createElement('canvas');c.width=W;c.height=H;
   const x=c.getContext('2d'),F='"Noto Sans KR","Apple SD Gothic Neo","Malgun Gothic",sans-serif';
+  const fit=(t,max,sz,b)=>{let z=sz;do{x.font=(b?'bold ':'')+z+'px '+F;z-=2}while(x.measureText(t).width>max&&z>30)};
   x.fillStyle='#f4f7f2';x.fillRect(0,0,W,H);
-  x.fillStyle='#2e7d32';x.fillRect(0,0,W,200);
-  x.fillStyle='#fff';x.font='bold 30px '+F;x.fillText('⛳ 나주 파크골프 클럽',P,62);
-  x.font='bold 52px '+F;x.fillText(g.name,P,128);
-  x.font='30px '+F;x.fillText(g.date+'  ·  참가 '+L.length+'명',P,176);
-  x.fillStyle='#6b7a6b';x.font='bold 28px '+F;
-  x.fillText('순위',P,top-14);x.fillText('이름',P+170,top-14);x.textAlign='right';x.fillText('타수',W-P,top-14);x.textAlign='left';
-  L.forEach((r,i)=>{const y=top+i*RH;
-    if(i%2==0){x.fillStyle='#ffffff';x.fillRect(P-20,y,W-2*P+40,RH)}
-    x.fillStyle=r.rk==1?'#f9a825':r.rk<=3?'#2e7d32':'#1d2a1d';x.font='bold 36px '+F;
-    x.fillText((r.rk==1?'🥇 ':r.rk==2?'🥈 ':r.rk==3?'🥉 ':'')+r.rk,P,y+52);
-    x.fillStyle='#1d2a1d';x.font=(r.rk<=3?'bold ':'')+'36px '+F;x.fillText(dname(r.id),P+170,y+52);
-    x.textAlign='right';x.font='bold 38px '+F;x.fillText(r.s+'타',W-P,y+52);x.textAlign='left'});
-  x.fillStyle='#6b7a6b';x.font='24px '+F;x.fillText('동점 시 생년월일이 빠른 분이 앞 순위',P,H-50);
-  const fn=(g.date+'_'+g.name).replace(/[\\/:*?"<>|\s]+/g,'_')+'.png';
+  x.fillStyle='#2e7d32';x.fillRect(0,0,W,300);
+  x.fillStyle='#fff';x.font='bold 44px '+F;x.fillText('⛳ 나주 파크골프 클럽',P,78);
+  fit(g.name,W-2*P,80,1);x.fillText(g.name,P,178);
+  x.font='bold 48px '+F;x.fillText(g.date.replace(/-/g,'.')+'  ·  '+L.length+'명',P,258);
+  x.fillStyle='#55625a';x.font='bold 42px '+F;
+  x.fillText('순위',P,top-24);x.fillText('이름',P+200,top-24);x.textAlign='right';x.fillText('타수',W-P,top-24);x.textAlign='left';
+  L.forEach((r,i)=>{const y=top+i*RH,cy=y+RH/2+22;
+    x.fillStyle=i%2==0?'#ffffff':'#e8f1e6';x.fillRect(0,y,W,RH);
+    x.fillStyle=r.rk==1?'#d48806':r.rk<=3?'#2e7d32':'#1d2a1d';x.font='bold 64px '+F;
+    x.fillText(r.rk+'',P,cy);
+    if(r.rk<=3){x.font='56px '+F;x.fillText(['🥇','🥈','🥉'][r.rk-1],P+82,cy-2)}
+    x.fillStyle='#111';fit(dname(r.id),W-P-200-230,64,1);x.fillText(dname(r.id),P+200,cy);
+    x.textAlign='right';x.font='bold 68px '+F;x.fillText(r.s+'타',W-P,cy);x.textAlign='left'});
+  x.fillStyle='#55625a';x.font='36px '+F;x.fillText('동점이면 생년월일 빠른 분이 앞 순위',P,H-45);
+const fn=(g.date+'_'+g.name).replace(/[\\/:*?"<>|\s]+/g,'_')+'.png';
   const blob=await new Promise(r=>c.toBlob(r,'image/png'));
   try{const f=new File([blob],fn,{type:'image/png'});
     if(navigator.canShare&&navigator.canShare({files:[f]})){await navigator.share({files:[f],title:g.name+' 결과'});return}}catch(e){if(e&&e.name=='AbortError')return}
