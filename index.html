@@ -108,9 +108,36 @@ function render(){
   $('#nv').innerHTML=tabs.map(t=>`<button class="${tab==t[0]?'on':''}" onclick="go('${t[0]}')"><b>${t[1]}</b>${t[2]}</button>`).join('');
   $('#v').innerHTML=({rank:vRank,member:vMember,grow:vGrow,more:vMore})[tab]();if(tab=='more')drawQR();window.scrollTo(0,0)}
 function go(t){tab=t;sel=null;edit=null;gsel=null;render()}
+// ---- 대회 결과 사진 만들기
+function dname(id){const m=D.members.find(x=>x.id==id);if(!m)return'(탈퇴)';
+  const dup=D.members.filter(x=>x.name==m.name).length>1;return m.name+(dup&&m.birth?'('+m.birth.slice(0,4)+')':'')}
+async function shot(id){
+  const g=D.games.find(x=>x.id==id);if(!g)return;const L=ranked(g);
+  const W=1080,P=60,RH=78,top=250,H=top+L.length*RH+130,c=document.createElement('canvas');c.width=W;c.height=H;
+  const x=c.getContext('2d'),F='"Noto Sans KR","Apple SD Gothic Neo","Malgun Gothic",sans-serif';
+  x.fillStyle='#f4f7f2';x.fillRect(0,0,W,H);
+  x.fillStyle='#2e7d32';x.fillRect(0,0,W,200);
+  x.fillStyle='#fff';x.font='bold 30px '+F;x.fillText('⛳ 나주 파크골프 클럽',P,62);
+  x.font='bold 52px '+F;x.fillText(g.name,P,128);
+  x.font='30px '+F;x.fillText(g.date+'  ·  참가 '+L.length+'명',P,176);
+  x.fillStyle='#6b7a6b';x.font='bold 28px '+F;
+  x.fillText('순위',P,top-14);x.fillText('이름',P+170,top-14);x.textAlign='right';x.fillText('타수',W-P,top-14);x.textAlign='left';
+  L.forEach((r,i)=>{const y=top+i*RH;
+    if(i%2==0){x.fillStyle='#ffffff';x.fillRect(P-20,y,W-2*P+40,RH)}
+    x.fillStyle=r.rk==1?'#f9a825':r.rk<=3?'#2e7d32':'#1d2a1d';x.font='bold 36px '+F;
+    x.fillText((r.rk==1?'🥇 ':r.rk==2?'🥈 ':r.rk==3?'🥉 ':'')+r.rk,P,y+52);
+    x.fillStyle='#1d2a1d';x.font=(r.rk<=3?'bold ':'')+'36px '+F;x.fillText(dname(r.id),P+170,y+52);
+    x.textAlign='right';x.font='bold 38px '+F;x.fillText(r.s+'타',W-P,y+52);x.textAlign='left'});
+  x.fillStyle='#6b7a6b';x.font='24px '+F;x.fillText('동점 시 생년월일이 빠른 분이 앞 순위',P,H-50);
+  const fn=(g.date+'_'+g.name).replace(/[\\/:*?"<>|\s]+/g,'_')+'.png';
+  const blob=await new Promise(r=>c.toBlob(r,'image/png'));
+  try{const f=new File([blob],fn,{type:'image/png'});
+    if(navigator.canShare&&navigator.canShare({files:[f]})){await navigator.share({files:[f],title:g.name+' 결과'});return}}catch(e){if(e&&e.name=='AbortError')return}
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=fn;document.body.appendChild(a);a.click();a.remove();
+  alert('사진이 저장되었어요 (다운로드 폴더/사진첩 확인)')}
 function vRank(){
   if(edit)return vEdit();
-  if(gsel){const g=D.games.find(x=>x.id==gsel);return`<button class="b g" onclick="gsel=null;render()">← 목록</button><div class="card"><h3>${e(g.name)} <span class="sm">${g.date} · ${Object.keys(g.scores).length}명</span></h3>${seg()}${ranked(g,flt).map(r=>`<div class="li"><div class="rk ${r.rk==1?'r1':''}">${r.rk==1?'🥇':r.rk==2?'🥈':r.rk==3?'🥉':r.rk}</div><div class="m">${e(nm(r.id))}${flt=='all'&&sx(r.id)?` <span class="chip">${sx(r.id)} ${ranked(g,sx(r.id)).find(q=>q.id==r.id).rk}위</span>`:''}</div><div class="sc">${r.s}타</div></div>`).join('')||'<div class="sm">해당 참가자가 없어요</div>'}${admin?`<div class="row"><button class="b g" onclick="startEdit('${g.id}')">수정</button><button class="b g" style="color:var(--red)" onclick="delGame('${g.id}')">삭제</button></div>`:''}<div class="sm">동점 시 생년월일이 빠른(연장자) 분이 앞 순위</div></div>`}
+  if(gsel){const g=D.games.find(x=>x.id==gsel);return`<button class="b g" onclick="gsel=null;render()">← 목록</button><div class="card"><h3>${e(g.name)} <span class="sm">${g.date} · ${Object.keys(g.scores).length}명</span></h3>${seg()}${ranked(g,flt).map(r=>`<div class="li"><div class="rk ${r.rk==1?'r1':''}">${r.rk==1?'🥇':r.rk==2?'🥈':r.rk==3?'🥉':r.rk}</div><div class="m">${e(nm(r.id))}${flt=='all'&&sx(r.id)?` <span class="chip">${sx(r.id)} ${ranked(g,sx(r.id)).find(q=>q.id==r.id).rk}위</span>`:''}</div><div class="sc">${r.s}타</div></div>`).join('')||'<div class="sm">해당 참가자가 없어요</div>'}${admin?`<div class="row"><button class="b g" onclick="startEdit('${g.id}')">수정</button><button class="b g" style="color:var(--red)" onclick="delGame('${g.id}')">삭제</button></div>`:''}<div class="sm">동점 시 생년월일이 빠른(연장자) 분이 앞 순위</div><button class="b" style="margin-top:10px" onclick="shot('${g.id}')">📷 결과 사진으로 저장·공유</button></div>`}
   const gs=[...D.games].sort((a,b)=>b.date.localeCompare(a.date));
   return(admin?`<button class="b" onclick="startEdit()">＋ 새 대회 입력</button>`:'')+(gs.length?gs.map(g=>{const r=ranked(g)[0];return`<div class="card" onclick="gsel='${g.id}';render()"><b>${e(g.name)}</b> <span class="sm">${g.date} · ${Object.keys(g.scores).length}명</span><div class="sm">🥇 ${e(nm(r.id))} ${r.s}타</div></div>`}).join(''):'<div class="card sm">아직 등록된 대회가 없어요.</div>')}
 function startEdit(id){if(!admin)return;const g=id?D.games.find(x=>x.id==id):null;edit=g?JSON.parse(JSON.stringify(g)):{id:uid(),date:today(),name:'',scores:{},isNew:1};render()}
