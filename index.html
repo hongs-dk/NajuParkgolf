@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="ko"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>파크골프 클럽</title>
+<link rel="manifest" href="manifest.json"><meta name="theme-color" content="#2e7d32">
+<link rel="icon" href="icon-192.png"><link rel="apple-touch-icon" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="파크골프">
+<style>
+:root{--bg:#f4f7f2;--card:#fff;--tx:#1d2a1d;--sub:#6b7a6b;--pri:#2e7d32;--pri2:#e3f1e3;--bd:#dde5dc;--red:#c62828;--gold:#f9a825;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media(prefers-color-scheme:dark){:root:not([data-theme=light]){--bg:#121712;--card:#1c241c;--tx:#e8f0e8;--sub:#93a393;--pri:#66bb6a;--pri2:#243324;--bd:#2d392d;--red:#ef5350}}
+:root[data-theme=dark]{--bg:#121712;--card:#1c241c;--tx:#e8f0e8;--sub:#93a393;--pri:#66bb6a;--pri2:#243324;--bd:#2d392d;--red:#ef5350}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--tx);font:16px/1.45 -apple-system,"Noto Sans KR","Malgun Gothic",sans-serif;padding-bottom:76px}
+header{padding:14px 16px 6px;font-size:20px;font-weight:700}header small{display:block;font-size:12px;color:var(--sub);font-weight:400}
+main{padding:8px 12px}.card{background:var(--card);border:1px solid var(--bd);border-radius:14px;padding:12px;margin:8px 0}
+nav{position:fixed;bottom:0;left:0;right:0;display:flex;background:var(--card);border-top:1px solid var(--bd);padding-bottom:env(safe-area-inset-bottom,0px)}
+nav button{flex:1;border:0;background:none;color:var(--sub);padding:10px 0;font-size:12px}nav button b{display:block;font-size:20px}nav .on{color:var(--pri);font-weight:700}
+input,select,button.b{font:inherit;padding:10px;border:1px solid var(--bd);border-radius:10px;background:var(--bg);color:var(--tx);width:100%}
+.row{display:flex;gap:8px;align-items:center;margin:6px 0}.row>*{flex:1}
+button.b{background:var(--pri);color:#fff;border:0;font-weight:700}button.g{background:var(--pri2);color:var(--pri)}button.d{background:none;color:var(--red);border:0;width:auto;flex:none;padding:6px}
+.sm{font-size:13px;color:var(--sub)}.rk{width:34px;flex:none;text-align:center;font-weight:700;font-size:18px}.r1{color:var(--gold)}
+.li{display:flex;align-items:center;gap:8px;padding:9px 0;border-bottom:1px solid var(--bd)}.li:last-child{border:0}.li>.m{flex:1;min-width:0}
+.sc{font-weight:700;font-size:18px;flex:none}.up{color:var(--pri)}.dn{color:var(--red)}h3{margin:4px 0 6px;font-size:16px}
+.chip{display:inline-block;padding:2px 8px;border-radius:99px;background:var(--pri2);color:var(--pri);font-size:12px}
+.sn{width:78px!important;flex:none!important;text-align:center}.hide{display:none}.st{text-align:center;font-size:12px;color:var(--sub)}
+</style><script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script></head><body>
+<header><span id="lk" onclick="go('more')" style="float:right;font-size:22px"></span>⛳ 파크골프 클럽 관리<small id="st"></small></header>
+<main id="v"></main>
+<nav id="nv"></nav>
+<script>
+const $=s=>document.querySelector(s);
+const e=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const REPO='hongs-dk/NajuParkgolf',API='https://api.github.com/repos/'+REPO+'/contents/data.json',DEFPW='4bdae9b98d8df74ac5fd077eb69f242c7f8c1a306f4d1638298c2dd49f6158ba';
+const APP=location.origin+location.pathname;
+let flt='all',admin=false,D={members:[],games:[]},tab='rank',sel=null,edit=null,gsel=null,timer=null,sha=null,etag=null,TK='';
+const LK='pgclub_v1',uid=()=>Math.random().toString(36).slice(2,9),today=()=>new Date().toISOString().slice(0,10);
+const tabs=[['rank','🏆','대회'],['member','👥','회원'],['grow','📈','성장'],['more','⚙️','관리']];
+const nm=id=>(D.members.find(m=>m.id==id)||{name:'(탈퇴)'}).name;
+const sx=id=>(D.members.find(m=>m.id==id)||{}).sex||'';
+const seg=()=>`<div class="row">${[['all','전체'],['남','남자'],['여','여자']].map(([k,l])=>`<button class="b ${flt==k?'':'g'}" onclick="flt='${k}';render()">${l}</button>`).join('')}</div>`;
+function status(t){$('#st').textContent=t;$('#lk').textContent=admin?'🔓':'🔒'}
+const b64e=t=>btoa(unescape(encodeURIComponent(t))),b64d=t=>decodeURIComponent(escape(atob(t.replace(/\n/g,''))));
+const hdr=()=>TK?{Authorization:'token '+TK}:{};
+function stTxt(){return admin?'🔓 관리자 모드 · 자동 저장':TK?'🔑 관리자 기기 · 잠김':'👀 보기 전용 · 실시간 공유'}
+function apply(j){if(j===JSON.stringify(D))return;D=JSON.parse(j);norm();try{localStorage.setItem(LK,j)}catch(x){}
+  const a=document.activeElement;if(!edit&&(!a||a.tagName!='INPUT'))render()}
+async function pull(){
+  try{const r=await fetch(API+'?t='+Date.now(),{headers:{...hdr(),...(etag?{'If-None-Match':etag}:{})},cache:'no-store'});
+    if(r.status==304){status(stTxt());return}
+    if(r.status==404){sha=null;status(stTxt());return}
+    if(!r.ok)throw r.status;
+    etag=r.headers.get('ETag');const d=await r.json();sha=d.sha;apply(b64d(d.content));status(stTxt())
+  }catch(x){
+    try{const r=await fetch('data.json?t='+Date.now(),{cache:'no-store'});if(r.ok){apply(JSON.stringify(await r.json()));status(stTxt());return}}catch(y){}
+    status('⚠️ 인터넷 연결 확인 (저장된 기록 표시 중)')}
+}
+async function push(n){
+  const body={message:'기록 업데이트 '+new Date().toLocaleString('ko-KR'),content:b64e(JSON.stringify(D)),...(sha?{sha}:{})};
+  const r=await fetch(API,{method:'PUT',headers:{...hdr(),'Content-Type':'application/json'},body:JSON.stringify(body)});
+  if(r.ok){const d=await r.json();sha=d.content.sha;etag=null;status('☁️ 저장됨 (모든 회원에게 공유)');return}
+  if((r.status==409||r.status==422)&&!n){const g=await fetch(API+'?t='+Date.now(),{headers:hdr(),cache:'no-store'});if(g.ok)sha=(await g.json()).sha;return push(1)}
+  if(r.status==401||r.status==403)throw'auth';throw r.status}
+function save(){
+  if(!admin)return;
+  try{localStorage.setItem(LK,JSON.stringify(D))}catch(x){}
+  status('⏳ 저장 중...');
+  clearTimeout(timer);timer=setTimeout(()=>push().catch(x=>status(x=='auth'?'⚠️ 저장 권한 오류: 관리자 링크를 다시 열어 주세요':'⚠️ 저장 실패: 인터넷 확인 후 다시 시도')),500)}
+async function init(){
+  const m=location.hash.match(/k=([\w]+)/);
+  if(m){try{localStorage.setItem('pg_tk',m[1])}catch(x){};history.replaceState(null,'',location.pathname)}
+  try{TK=localStorage.getItem('pg_tk')||'';const s=localStorage.getItem(LK);if(s)D=JSON.parse(s)}catch(x){}
+  try{admin=!!TK&&localStorage.getItem('pg_admin')==cur()}catch(x){}
+  norm();status(stTxt());render();
+  if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
+  await pull();try{admin=!!TK&&localStorage.getItem('pg_admin')==cur()}catch(x){};status(stTxt());render();
+  setInterval(()=>{if(!document.hidden&&!edit)pull()},TK?30000:90000);
+  document.addEventListener('visibilitychange',()=>{if(!document.hidden)pull()});
+}
+const cur=()=>D.pwh||DEFPW;
+// ---- 계산
+const age=b=>{if(!b)return'';const n=new Date(),d=new Date(b);let a=n.getFullYear()-d.getFullYear();if(n.getMonth()<d.getMonth()||(n.getMonth()==d.getMonth()&&n.getDate()<d.getDate()))a--;return a};
+const bd=id=>{const m=D.members.find(x=>x.id==id);return(m&&m.birth)||'9999-99-99'};
+const norm=()=>D.members.forEach(m=>{if(!m.birth&&m.year)m.birth=m.year+'-01-01'});
+function ranked(g,f){
+  const a=Object.entries(g.scores).filter(([id])=>!f||f=='all'||sx(id)==f).map(([id,s])=>({id,s:+s})).sort((x,y)=>x.s-y.s||bd(x.id).localeCompare(bd(y.id)));
+  a.forEach((r,i)=>r.rk=i+1);return a}
+function hist(id){return D.games.filter(g=>g.scores[id]!=null).sort((a,b)=>a.date.localeCompare(b.date)).map(g=>({d:g.date,n:g.name,s:+g.scores[id],rk:(ranked(g).find(r=>r.id==id)||{}).rk,N:Object.keys(g.scores).length,sk:(ranked(g,sx(id)).find(r=>r.id==id)||{}).rk,sN:ranked(g,sx(id)).length,sx:sx(id)}))}
+const avg=a=>a.reduce((x,y)=>x+y,0)/a.length;
+function stat(id){
+  const h=hist(id);if(!h.length)return{n:0,h};
+  const s=h.map(x=>x.s),k=Math.min(3,Math.floor(s.length/2)||1);
+  const r={n:h.length,h,best:Math.min(...s),avg:avg(s),last:s[s.length-1]};
+  if(h.length>=2){r.first=avg(s.slice(0,k));r.recent=avg(s.slice(-k));r.gr=(r.first-r.recent)/r.first*100}
+  return r}
+function spark(h){
+  if(h.length<2)return'<div class="sm">2회 이상 참가하면 그래프가 표시됩니다</div>';
+  const W=300,H=90,p=12,s=h.map(x=>x.s),mn=Math.min(...s),mx=Math.max(...s),r=mx-mn||1;
+  const P=h.map((x,i)=>[p+i*(W-2*p)/(h.length-1),p+(x.s-mn)/r*(H-2*p)]);
+  return`<svg viewBox="0 0 ${W} ${H+14}" width="100%"><polyline fill="none" stroke="var(--pri)" stroke-width="2" points="${P.map(q=>q.join(',')).join(' ')}"/>${P.map((q,i)=>`<circle cx="${q[0]}" cy="${q[1]}" r="3.5" fill="var(--pri)"/><text x="${q[0]}" y="${q[1]-6}" font-size="10" text-anchor="middle" fill="var(--tx)">${s[i]}</text>`).join('')}<text x="${p}" y="${H+11}" font-size="9" fill="var(--sub)">${h[0].d}</text><text x="${W-p}" y="${H+11}" font-size="9" text-anchor="end" fill="var(--sub)">${h[h.length-1].d}</text></svg><div class="sm">※ 타수는 낮을수록 좋아요 (그래프는 아래로 갈수록 타수 많음)</div>`}
+// ---- 화면
+function render(){
+  $('#nv').innerHTML=tabs.map(t=>`<button class="${tab==t[0]?'on':''}" onclick="go('${t[0]}')"><b>${t[1]}</b>${t[2]}</button>`).join('');
+  $('#v').innerHTML=({rank:vRank,member:vMember,grow:vGrow,more:vMore})[tab]();if(tab=='more')drawQR();window.scrollTo(0,0)}
+function go(t){tab=t;sel=null;edit=null;gsel=null;render()}
+function vRank(){
+  if(edit)return vEdit();
+  if(gsel){const g=D.games.find(x=>x.id==gsel);return`<button class="b g" onclick="gsel=null;render()">← 목록</button><div class="card"><h3>${e(g.name)} <span class="sm">${g.date} · ${Object.keys(g.scores).length}명</span></h3>${seg()}${ranked(g,flt).map(r=>`<div class="li"><div class="rk ${r.rk==1?'r1':''}">${r.rk==1?'🥇':r.rk==2?'🥈':r.rk==3?'🥉':r.rk}</div><div class="m">${e(nm(r.id))}${flt=='all'&&sx(r.id)?` <span class="chip">${sx(r.id)} ${ranked(g,sx(r.id)).find(q=>q.id==r.id).rk}위</span>`:''}</div><div class="sc">${r.s}타</div></div>`).join('')||'<div class="sm">해당 참가자가 없어요</div>'}${admin?`<div class="row"><button class="b g" onclick="startEdit('${g.id}')">수정</button><button class="b g" style="color:var(--red)" onclick="delGame('${g.id}')">삭제</button></div>`:''}<div class="sm">동점 시 생년월일이 빠른(연장자) 분이 앞 순위</div></div>`}
+  const gs=[...D.games].sort((a,b)=>b.date.localeCompare(a.date));
+  return(admin?`<button class="b" onclick="startEdit()">＋ 새 대회 입력</button>`:'')+(gs.length?gs.map(g=>{const r=ranked(g)[0];return`<div class="card" onclick="gsel='${g.id}';render()"><b>${e(g.name)}</b> <span class="sm">${g.date} · ${Object.keys(g.scores).length}명</span><div class="sm">🥇 ${e(nm(r.id))} ${r.s}타</div></div>`}).join(''):'<div class="card sm">아직 등록된 대회가 없어요.</div>')}
+function startEdit(id){if(!admin)return;const g=id?D.games.find(x=>x.id==id):null;edit=g?JSON.parse(JSON.stringify(g)):{id:uid(),date:today(),name:'',scores:{},isNew:1};render()}
+function vEdit(){
+  if(!admin){edit=null;return vRank()}
+  if(!D.members.length)return'<div class="card">먼저 [회원] 탭에서 회원을 등록하세요.</div><button class="b g" onclick="edit=null;render()">돌아가기</button>';
+  const ms=[...D.members].sort((a,b)=>a.name.localeCompare(b.name,'ko'));
+  return`<div class="card"><h3>${edit.isNew?'새 대회':'대회 수정'}</h3><div class="row"><input type="date" id="gd" value="${edit.date}"><input id="gn" placeholder="대회명" value="${e(edit.name)}"></div>
+  <div class="sm">참가한 회원의 타수를 입력하세요 (빈칸은 불참)</div>${ms.map(m=>`<div class="li"><div class="m">${e(m.name)} <span class="sm">${m.sex||''}</span></div><input class="sn" type="number" inputmode="numeric" min="1" data-id="${m.id}" value="${edit.scores[m.id]??''}" placeholder="타수"></div>`).join('')}
+  <div class="row"><button class="b g" onclick="edit=null;render()">취소</button><button class="b" onclick="saveGame()">저장 · 순위 확인</button></div></div>`}
+function saveGame(){
+  if(!admin)return;
+  const sc={};document.querySelectorAll('.sn').forEach(i=>{if(i.value!=='')sc[i.dataset.id]=+i.value});
+  if(!Object.keys(sc).length)return alert('타수를 1명 이상 입력하세요');
+  const g={id:edit.id,date:$('#gd').value||today(),name:$('#gn').value.trim()||'정기대회',scores:sc};
+  const i=D.games.findIndex(x=>x.id==g.id);i<0?D.games.push(g):D.games[i]=g;
+  edit=null;gsel=g.id;save();render()}
+function delGame(id){if(admin&&confirm('이 대회를 삭제할까요?')){D.games=D.games.filter(g=>g.id!=id);gsel=null;save();render()}}
+function vMember(){
+  const m=sel&&D.members.find(x=>x.id==sel);
+  const f=!admin?'':`<div class="card"><h3>${m?'회원 수정':'회원 등록'}</h3><input id="mn" placeholder="이름" value="${e(m?.name)}"><div class="sm" style="margin-top:6px">생년월일</div><div class="row"><input id="my" type="date" value="${m?.birth||''}"><select id="ms"><option ${m?.sex=='남'?'selected':''}>남</option><option ${m?.sex=='여'?'selected':''}>여</option></select></div><div class="row">${m?'<button class="b g" onclick="sel=null;render()">취소</button>':''}<button class="b" onclick="saveMember()">${m?'수정 저장':'등록'}</button></div></div>`;
+  const l=[...D.members].sort((a,b)=>a.name.localeCompare(b.name,'ko'));
+  return f+`<div class="card"><h3>전체 회원 ${l.length}명</h3>${l.map(x=>`<div class="li"><div class="m" ${admin?`onclick="sel='${x.id}';render()"`:''}><b>${e(x.name)}</b> <span class="sm">${x.sex} · ${x.birth||'생년월일 미등록'}${x.birth?` (만 ${age(x.birth)}세)`:''}</span></div>${admin?`<button class="d" onclick="delMember('${x.id}')">삭제</button>`:''}</div>`).join('')||'<div class="sm">등록된 회원이 없어요</div>'}</div>`}
+function saveMember(){
+  const n=$('#mn').value.trim();if(!n)return alert('이름을 입력하세요');
+  if(!admin)return;const o={name:n,birth:$('#my').value||'',sex:$('#ms').value};
+  if(sel)Object.assign(D.members.find(x=>x.id==sel),o);else D.members.push({id:uid(),...o});
+  sel=null;save();render()}
+function delMember(id){if(admin&&confirm(nm(id)+' 회원을 삭제할까요? (기존 대회 기록은 남습니다)')){D.members=D.members.filter(m=>m.id!=id);save();render()}}
+function vGrow(){
+  if(sel){const m=D.members.find(x=>x.id==sel),s=stat(sel);
+    return`<button class="b g" onclick="sel=null;render()">← 목록</button><div class="card"><h3>${e(m.name)} <span class="sm">${s.n}회 참가</span></h3>${spark(s.h)}${s.n?`<div class="row sm"><span>최저 <b>${s.best}</b></span><span>평균 <b>${s.avg.toFixed(1)}</b></span><span>최근 <b>${s.last}</b></span></div>`:''}${s.gr!=null?`<div class="${s.gr>=0?'up':'dn'}"><b>성장률 ${s.gr>=0?'+':''}${s.gr.toFixed(1)}%</b> <span class="sm">(초기 평균 ${s.first.toFixed(1)} → 최근 평균 ${s.recent.toFixed(1)})</span></div>`:''}${s.h.slice().reverse().map(x=>`<div class="li"><div class="m">${x.d} ${e(x.n)}</div><div class="sm">전체 ${x.rk}/${x.N}위${x.sx?` · ${x.sx} ${x.sk}/${x.sN}위`:''}</div><div class="sc">${x.s}</div></div>`).join('')}</div>`}
+  const L=D.members.map(m=>({m,s:stat(m.id)})).filter(x=>x.s.n&&(flt=='all'||x.m.sex==flt));
+  if(!L.length)return seg()+'<div class="card sm">해당 기록이 아직 없어요.</div>';
+  const G=L.filter(x=>x.s.gr!=null).sort((a,b)=>b.s.gr-a.s.gr),B=[...L].sort((a,b)=>a.s.best-b.s.best).slice(0,3),A=[...L].sort((a,b)=>a.s.avg-b.s.avg).slice(0,3);
+  const row=(x,r)=>`<div class="li" onclick="sel='${x.m.id}';render()"><div class="m"><b>${e(x.m.name)}</b> <span class="sm">${x.s.n}회</span></div>${r}</div>`;
+  return seg()+`<div class="card"><h3>🚀 성장률 순위 <span class="sm">(타수가 줄수록 ↑)</span></h3>${G.map((x,i)=>row(x,`<span class="chip">${i+1}위</span><div class="sc ${x.s.gr>=0?'up':'dn'}">${x.s.gr>=0?'+':''}${x.s.gr.toFixed(1)}%</div>`)).join('')||'<div class="sm">2회 이상 참가한 회원이 필요해요</div>'}</div>
+  <div class="card"><h3>🎯 최저타 TOP3</h3>${B.map(x=>row(x,`<div class="sc">${x.s.best}타</div>`)).join('')}</div>
+  <div class="card"><h3>📊 평균타수 TOP3</h3>${A.map(x=>row(x,`<div class="sc">${x.s.avg.toFixed(1)}</div>`)).join('')}</div>
+  <div class="card"><h3>전체 회원</h3>${L.map(x=>row(x,`<div class="sm">평균 ${x.s.avg.toFixed(1)}</div>`)).join('')}</div>`}
+async function sha256(t){const b=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(t));return[...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join('')}
+async function chgPw(){
+  const a=$('#np').value.trim();if(a.length<4)return alert('4자리 이상 입력하세요');
+  D.pwh=await sha256(a);try{localStorage.setItem('pg_admin',D.pwh)}catch(x){};save();$('#np').value='';alert('패스워드가 변경되었어요. 다른 관리자 폰은 새 패스워드로 다시 로그인해야 해요.')}
+function copyApp(){try{navigator.clipboard.writeText(APP).then(()=>alert('링크가 복사되었어요'))}catch(x){prompt('링크를 복사하세요',APP)}}
+function shareApp(){navigator.share?navigator.share({title:'파크골프 클럽',url:APP}).catch(()=>{}):copyApp()}
+function drawQR(){const q=$('#qr');if(!q||!window.QRCode)return;q.innerHTML='';new QRCode(q,{text:APP,width:180,height:180})}
+async function login(){
+  if(!TK)return alert('이 폰은 관리자 기기로 등록되지 않았어요.\n관리자 전용 링크로 한 번 열어 주세요.');
+  if(await sha256($('#pw').value.trim())!=cur())return alert('패스워드가 맞지 않아요');
+  admin=true;try{localStorage.setItem('pg_admin',cur())}catch(x){};await pull();status(stTxt());render()}
+function logout(){admin=false;try{localStorage.removeItem('pg_admin')}catch(x){};status(stTxt());render()}
+function vMore(){return`<div class="card"><h3>관리자 모드</h3>${admin?'<div class="sm">🔓 관리자로 로그인됨 – 회원·대회 등록/수정이 가능합니다.</div><div class="row"><button class="b g" onclick="logout()">관리자 로그아웃</button></div><h3 style="margin-top:12px">패스워드 변경</h3><div class="row"><input id="np" type="password" inputmode="numeric" placeholder="새 패스워드 (4자리 이상)"><button class="b" style="flex:none;width:auto" onclick="chgPw()">변경</button></div>':!TK?'<div class="sm">👀 보기 전용입니다. 점수 등록·수정은 관리자 폰에서만 할 수 있어요.</div>':'<div class="sm">🔑 관리자 폰입니다. 패스워드를 입력하세요.</div><div class="row"><input id="pw" type="password" inputmode="numeric" placeholder="관리자 패스워드"><button class="b" style="flex:none;width:auto" onclick="login()">입력</button></div>'}</div><div class="card"><h3>데이터 관리</h3><div class="sm">회원 ${D.members.length}명 · 대회 ${D.games.length}회<br>${admin?'클라우드에 자동 저장되고 모든 회원에게 실시간 공유됩니다.':'보기 전용: 데이터는 실시간으로 공유됩니다.'}</div><div class="row"><button class="b g" onclick="backup()">백업 파일 저장</button>${admin?`<button class="b g" onclick="$('#fi').click()">백업 불러오기</button>`:''}</div><input type="file" id="fi" class="hide" accept=".json" onchange="restore(this)"></div><div class="card sm"><b>성장률 계산법</b><br>처음 참가한 대회들의 평균 타수와 최근 대회들의 평균 타수를 비교합니다(최대 3경기씩). 타수가 줄수록 +%입니다.</div><div class="card" style="text-align:center"><h3>📱 앱 공유 · 설치</h3><div id="qr" style="display:inline-block;background:#fff;padding:10px;border-radius:10px"></div><div class="sm" style="margin:8px 0;word-break:break-all">${APP}</div><div class="row"><button class="b g" onclick="shareApp()">링크 공유</button><button class="b g" onclick="copyApp()">링크 복사</button></div><div class="sm" style="text-align:left"><b>홈 화면에 설치</b><br>아이폰: Safari → 공유(⬆️) → 홈 화면에 추가<br>안드로이드: Chrome → ⋮ → 홈 화면에 추가<br>※ 로그인 없이 링크/QR만으로 누구나 볼 수 있어요. 입력은 관리자 패스워드가 필요합니다.</div></div>`}
+function backup(){const t=JSON.stringify(D,null,1),a=document.createElement('a');a.href=URL.createObjectURL(new Blob([t],{type:'application/json'}));a.download='parkgolf_'+today()+'.json';a.click()}
+function restore(i){if(!admin)return;const f=i.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{try{const j=JSON.parse(r.result);if(!j.members||!j.games)throw 0;if(confirm('현재 데이터를 백업 파일로 덮어쓸까요?')){D=j;save();render()}}catch(x){alert('올바른 백업 파일이 아니에요')}};r.readAsText(f)}
+init();
+</script></body></html>
