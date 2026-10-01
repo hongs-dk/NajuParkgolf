@@ -1,5 +1,10 @@
 <!DOCTYPE html>
 <html lang="ko"><head><meta charset="utf-8">
+<script>
+(function(){var u=navigator.userAgent||'';
+ if(/KAKAOTALK/i.test(u)){location.href='kakaotalk://web/openExternal?url='+encodeURIComponent(location.href);}
+})();
+</script>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>파크골프 클럽</title>
 <link rel="manifest" href="manifest.json"><meta name="theme-color" content="#2e7d32">
@@ -23,9 +28,11 @@ button.b{background:var(--pri);color:#fff;border:0;font-weight:700}button.g{back
 .sc{font-weight:700;font-size:18px;flex:none}.up{color:var(--pri)}.dn{color:var(--red)}h3{margin:4px 0 6px;font-size:16px}
 .chip{display:inline-block;padding:2px 8px;border-radius:99px;background:var(--pri2);color:var(--pri);font-size:12px}
 .sn{width:78px!important;flex:none!important;text-align:center}.hide{display:none}.st{text-align:center;font-size:12px;color:var(--sub)}
-</style><script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script></head><body>
+#ib .card{background:var(--pri);color:#fff;border:0;margin:8px 12px}#ib .card b{font-size:17px}#ib button{font:inherit;border:0;border-radius:10px;padding:10px 14px;font-weight:700}
+#ib .go{background:#fff;color:var(--pri);width:100%;margin-top:8px;font-size:17px}#ib .x{float:right;background:none;color:#fff;padding:0 4px;font-size:20px}
+#ib ol{margin:6px 0 0;padding-left:20px}</style><script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script></head><body>
 <header><span id="lk" onclick="go('more')" style="float:right;font-size:22px"></span>⛳ 파크골프 클럽 관리<small id="st"></small></header>
-<main id="v"></main>
+<div id="ib"></div><main id="v"></main>
 <nav id="nv"></nav>
 <script>
 const $=s=>document.querySelector(s);
@@ -177,5 +184,23 @@ function vAdm(){const L=D.admins||[],m=L.find(x=>x.id==me());
 function vMore(){return`<div class="card"><h3>관리자 모드</h3>${admin?vAdm():'<div class="sm">점수 등록·수정은 관리자만 할 수 있어요. 관리자 패스워드를 입력하세요.</div><div class="row"><input id="pw" type="password" inputmode="numeric" placeholder="관리자 패스워드" onkeydown="if(event.key==\'Enter\')login()"><button class="b" style="flex:none;width:auto" onclick="login()">입력</button></div>'}</div><div class="card"><h3>데이터 관리</h3><div class="sm">회원 ${D.members.length}명 · 대회 ${D.games.length}회<br>${admin?'클라우드에 자동 저장되고 모든 회원에게 실시간 공유됩니다.':'보기 전용: 데이터는 실시간으로 공유됩니다.'}</div><div class="row"><button class="b g" onclick="backup()">백업 파일 저장</button>${admin?`<button class="b g" onclick="$('#fi').click()">백업 불러오기</button>`:''}</div><input type="file" id="fi" class="hide" accept=".json" onchange="restore(this)"></div><div class="card sm"><b>성장률 계산법</b><br>처음 참가한 대회들의 평균 타수와 최근 대회들의 평균 타수를 비교합니다(최대 3경기씩). 타수가 줄수록 +%입니다.</div><div class="card" style="text-align:center"><h3>📱 앱 공유 · 설치</h3><div id="qr" style="display:inline-block;background:#fff;padding:10px;border-radius:10px"></div><div class="sm" style="margin:8px 0;word-break:break-all">${APP}</div><div class="row"><button class="b g" onclick="shareApp()">링크 공유</button><button class="b g" onclick="copyApp()">링크 복사</button></div><div class="sm" style="text-align:left"><b>홈 화면에 설치</b><br>아이폰: Safari → 공유(⬆️) → 홈 화면에 추가<br>안드로이드: Chrome → ⋮ → 홈 화면에 추가<br>※ 로그인 없이 링크/QR만으로 누구나 볼 수 있어요. 입력은 관리자 패스워드가 필요합니다.</div></div>`}
 function backup(){const t=JSON.stringify(D,null,1),a=document.createElement('a');a.href=URL.createObjectURL(new Blob([t],{type:'application/json'}));a.download='parkgolf_'+today()+'.json';a.click()}
 function restore(i){if(!admin)return;const f=i.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{try{const j=JSON.parse(r.result);if(!j.members||!j.games)throw 0;if(confirm('현재 데이터를 백업 파일로 덮어쓸까요?')){j.admins=D.admins;delete j.pwh;D=j;save();render()}}catch(x){alert('올바른 백업 파일이 아니에요')}};r.readAsText(f)}
+// ---- 앱 설치 안내
+let dip=null;
+const isStd=()=>matchMedia('(display-mode: standalone)').matches||navigator.standalone;
+const isIOS=/iPhone|iPad|iPod/i.test(navigator.userAgent),isKakao=/KAKAOTALK/i.test(navigator.userAgent);
+function ib(){const el=$('#ib');if(!el)return;let h='';
+  let hide=false;try{hide=localStorage.getItem('pg_ib')=='1'}catch(x){}
+  if(isStd()||hide){el.innerHTML='';return}
+  const x='<button class="x" onclick="ibx()">✕</button>';
+  if(isKakao)h=`<div class="card">${x}<b>📲 앱으로 설치하기</b><div>오른쪽 위 <b>⋮</b> 또는 <b>공유</b> 메뉴에서 <b>"다른 브라우저로 열기"</b>를 눌러 주세요.</div></div>`;
+  else if(dip)h=`<div class="card">${x}<b>📲 앱으로 설치하기</b><div>버튼 한 번이면 홈 화면에 앱이 생겨요.</div><button class="go" onclick="inst()">앱 설치</button></div>`;
+  else if(isIOS)h=`<div class="card">${x}<b>📲 앱으로 설치하기 (아이폰)</b><ol><li>아래쪽 <b>공유 버튼 ⬆️</b> 누르기</li><li><b>"홈 화면에 추가"</b> 누르기</li><li>오른쪽 위 <b>"추가"</b></li></ol></div>`;
+  else if(/Android/i.test(navigator.userAgent))h=`<div class="card">${x}<b>📲 앱으로 설치하기</b><div>오른쪽 위 <b>⋮</b> → <b>"홈 화면에 추가"</b> 또는 <b>"앱 설치"</b>를 눌러 주세요.</div></div>`;
+  el.innerHTML=h}
+function ibx(){try{localStorage.setItem('pg_ib','1')}catch(x){};ib()}
+async function inst(){if(!dip)return;dip.prompt();try{await dip.userChoice}catch(x){};dip=null;ib()}
+addEventListener('beforeinstallprompt',ev=>{ev.preventDefault();dip=ev;ib()});
+addEventListener('appinstalled',()=>{dip=null;ib()});
+ib();
 init();
 </script></body></html>
