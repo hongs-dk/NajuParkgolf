@@ -134,14 +134,17 @@ async function shot(id){
   fit(g.name,W-2*P,80,1);x.fillText(g.name,P,178);
   x.font='bold 48px '+F;x.fillText(g.date.replace(/-/g,'.')+'  ·  '+L.length+'명',P,258);
   x.fillStyle='#55625a';x.font='bold 42px '+F;
-  x.fillText('순위',P,top-24);x.fillText('이름',P+200,top-24);x.textAlign='right';x.fillText('타수',W-P,top-24);x.textAlign='left';
+  x.fillText('순위',P,top-24);x.fillText('이름 (성별 순위)',P+200,top-24);x.textAlign='right';x.fillText('타수',W-P,top-24);x.textAlign='left';
   L.forEach((r,i)=>{const y=top+i*RH,cy=y+RH/2+22;
     x.fillStyle=i%2==0?'#ffffff':'#e8f1e6';x.fillRect(0,y,W,RH);
     x.fillStyle=r.rk==1?'#d48806':r.rk<=3?'#2e7d32':'#1d2a1d';x.font='bold 64px '+F;
     x.fillText(r.rk+'',P,cy);
     if(r.rk<=3){x.font='56px '+F;x.fillText(['🥇','🥈','🥉'][r.rk-1],P+82,cy-2)}
-    x.fillStyle='#111';fit(dname(r.id),W-P-200-230,64,1);x.fillText(dname(r.id),P+200,cy);
-    x.textAlign='right';x.font='bold 68px '+F;x.fillText(r.s+'타',W-P,cy);x.textAlign='left'});
+    const sxv=sx(r.id),gk=sxv?(ranked(g,sxv).find(q=>q.id==r.id)||{}).rk:0,suf=sxv?' ('+sxv+' '+gk+'위)':'';
+    x.font='bold 46px '+F;const sw=suf?x.measureText(suf).width:0;
+    x.fillStyle='#111';fit(dname(r.id),W-P-200-230-sw,64,1);x.fillText(dname(r.id),P+200,cy);
+    if(suf){const nw=x.measureText(dname(r.id)).width;x.font='bold 46px '+F;x.fillStyle=sxv=='여'?'#c2185b':'#1565c0';x.fillText(suf,P+200+nw,cy)}
+    x.textAlign='right';x.fillStyle='#111';x.font='bold 68px '+F;x.fillText(r.s+'타',W-P,cy);x.textAlign='left'});
   x.fillStyle='#55625a';x.font='36px '+F;x.fillText('동점이면 생년월일 빠른 분이 앞 순위',P,H-45);
 const fn=(g.date+'_'+g.name).replace(/[\\/:*?"<>|\s]+/g,'_')+'.png';
   const blob=await new Promise(r=>c.toBlob(r,'image/png'));
