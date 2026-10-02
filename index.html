@@ -30,7 +30,9 @@ button.b{background:var(--pri);color:#fff;border:0;font-weight:700}button.g{back
 .sn{width:78px!important;flex:none!important;text-align:center}.hide{display:none}.st{text-align:center;font-size:12px;color:var(--sub)}
 #ib .card{background:var(--pri);color:#fff;border:0;margin:8px 12px}#ib .card b{font-size:17px}#ib button{font:inherit;border:0;border-radius:10px;padding:10px 14px;font-weight:700}
 #ib .go{background:#fff;color:var(--pri);width:100%;margin-top:8px;font-size:17px}#ib .x{float:right;background:none;color:#fff;padding:0 4px;font-size:20px}
-#ib ol{margin:6px 0 0;padding-left:20px}</style><script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script></head><body>
+#ib ol{margin:6px 0 0;padding-left:20px}.chip.cm{color:#5b80a8}.chip.cf{color:#b9748c}
+@media(prefers-color-scheme:dark){:root:not([data-theme=light]) .chip.cm{color:#93b4d6}:root:not([data-theme=light]) .chip.cf{color:#dba3b6}}
+</style><script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script></head><body>
 <header><span id="lk" onclick="go('more')" style="float:right;font-size:22px"></span>⛳ 파크골프 클럽 관리<small id="st"></small></header>
 <div id="ib"></div><main id="v"></main>
 <nav id="nv"></nav>
@@ -143,7 +145,7 @@ async function shot(id){
     const sxv=sx(r.id),gk=sxv?(ranked(g,sxv).find(q=>q.id==r.id)||{}).rk:0,suf=sxv?' ('+sxv+' '+gk+'위)':'';
     x.font='bold 46px '+F;const sw=suf?x.measureText(suf).width:0;
     x.fillStyle='#111';fit(dname(r.id),W-P-200-230-sw,64,1);x.fillText(dname(r.id),P+200,cy);
-    if(suf){const nw=x.measureText(dname(r.id)).width;x.font='bold 46px '+F;x.fillStyle=sxv=='여'?'#c2185b':'#1565c0';x.fillText(suf,P+200+nw,cy)}
+    if(suf){const nw=x.measureText(dname(r.id)).width;x.font='bold 46px '+F;x.fillStyle=sxv=='여'?'#b0687f':'#5578a0';x.fillText(suf,P+200+nw,cy)}
     x.textAlign='right';x.fillStyle='#111';x.font='bold 68px '+F;x.fillText(r.s+'타',W-P,cy);x.textAlign='left'});
   x.fillStyle='#55625a';x.font='36px '+F;x.fillText('동점이면 생년월일 빠른 분이 앞 순위',P,H-45);
 const fn=(g.date+'_'+g.name).replace(/[\\/:*?"<>|\s]+/g,'_')+'.png';
@@ -154,7 +156,7 @@ const fn=(g.date+'_'+g.name).replace(/[\\/:*?"<>|\s]+/g,'_')+'.png';
   alert('사진이 저장되었어요 (다운로드 폴더/사진첩 확인)')}
 function vRank(){
   if(edit)return vEdit();
-  if(gsel){const g=D.games.find(x=>x.id==gsel);return`<button class="b g" onclick="gsel=null;render()">← 목록</button><div class="card"><h3>${e(g.name)} <span class="sm">${g.date} · ${Object.keys(g.scores).length}명</span></h3>${seg()}${ranked(g,flt).map(r=>`<div class="li"><div class="rk ${r.rk==1?'r1':''}">${r.rk==1?'🥇':r.rk==2?'🥈':r.rk==3?'🥉':r.rk}</div><div class="m">${e(nm(r.id))}${flt=='all'&&sx(r.id)?` <span class="chip">${sx(r.id)} ${ranked(g,sx(r.id)).find(q=>q.id==r.id).rk}위</span>`:''}</div><div class="sc">${r.s}타</div></div>`).join('')||'<div class="sm">해당 참가자가 없어요</div>'}${admin?`<div class="row"><button class="b g" onclick="startEdit('${g.id}')">수정</button><button class="b g" style="color:var(--red)" onclick="delGame('${g.id}')">삭제</button></div>`:''}<div class="sm">동점 시 생년월일이 빠른(연장자) 분이 앞 순위</div><button class="b" style="margin-top:10px" onclick="shot('${g.id}')">📷 결과 사진으로 저장·공유</button></div>`}
+  if(gsel){const g=D.games.find(x=>x.id==gsel);return`<button class="b g" onclick="gsel=null;render()">← 목록</button><div class="card"><h3>${e(g.name)} <span class="sm">${g.date} · ${Object.keys(g.scores).length}명</span></h3>${seg()}${ranked(g,flt).map(r=>`<div class="li"><div class="rk ${r.rk==1?'r1':''}">${r.rk==1?'🥇':r.rk==2?'🥈':r.rk==3?'🥉':r.rk}</div><div class="m">${e(nm(r.id))}${flt=='all'&&sx(r.id)?` <span class="chip ${sx(r.id)=='여'?'cf':'cm'}">${sx(r.id)} ${ranked(g,sx(r.id)).find(q=>q.id==r.id).rk}위</span>`:''}</div><div class="sc">${r.s}타</div></div>`).join('')||'<div class="sm">해당 참가자가 없어요</div>'}${admin?`<div class="row"><button class="b g" onclick="startEdit('${g.id}')">수정</button><button class="b g" style="color:var(--red)" onclick="delGame('${g.id}')">삭제</button></div>`:''}<div class="sm">동점 시 생년월일이 빠른(연장자) 분이 앞 순위</div><button class="b" style="margin-top:10px" onclick="shot('${g.id}')">📷 결과 사진으로 저장·공유</button></div>`}
   const gs=[...D.games].sort((a,b)=>b.date.localeCompare(a.date));
   return(admin?`<button class="b" onclick="startEdit()">＋ 새 대회 입력</button>`:'')+(gs.length?gs.map(g=>{const r=ranked(g)[0];return`<div class="card" onclick="gsel='${g.id}';render()"><b>${e(g.name)}</b> <span class="sm">${g.date} · ${Object.keys(g.scores).length}명</span><div class="sm">🥇 ${e(nm(r.id))} ${r.s}타</div></div>`}).join(''):'<div class="card sm">아직 등록된 대회가 없어요.</div>')}
 function startEdit(id){if(!admin)return;const g=id?D.games.find(x=>x.id==id):null;edit=g?JSON.parse(JSON.stringify(g)):{id:uid(),date:today(),name:'',scores:{},isNew:1};render()}
