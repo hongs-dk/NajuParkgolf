@@ -125,7 +125,7 @@ function go(t){tab=t;sel=null;edit=null;gsel=null;render()}
 // ---- 대회 결과 사진 만들기
 function dname(id){const m=D.members.find(x=>x.id==id);if(!m)return'(탈퇴)';
   const dup=D.members.filter(x=>x.name==m.name).length>1;return m.name+(dup&&m.birth?'('+m.birth.slice(0,4)+')':'')}
-async function shot(id){
+async function shot(id,mode){
   const g=D.games.find(x=>x.id==id);if(!g)return;const L=ranked(g);
   const W=1080,P=50,RH=120,top=380,H=top+L.length*RH+120,c=document.createElement('canvas');c.width=W;c.height=H;
   const x=c.getContext('2d'),F='"Noto Sans KR","Apple SD Gothic Neo","Malgun Gothic",sans-serif';
@@ -150,13 +150,17 @@ async function shot(id){
   x.fillStyle='#55625a';x.font='36px '+F;x.fillText('동점이면 생년월일 빠른 분이 앞 순위',P,H-45);
 const fn=(g.date+'_'+g.name).replace(/[\\/:*?"<>|\s]+/g,'_')+'.png';
   const blob=await new Promise(r=>c.toBlob(r,'image/png'));
-  try{const f=new File([blob],fn,{type:'image/png'});
-    if(navigator.canShare&&navigator.canShare({files:[f]})){await navigator.share({files:[f],title:g.name+' 결과'});return}}catch(e){if(e&&e.name=='AbortError')return}
+  const f=new File([blob],fn,{type:'image/png'}),cs=!!(navigator.canShare&&navigator.canShare({files:[f]}));
+  // 아이폰은 웹에서 사진첩에 직접 저장할 수 없어 공유창의 "이미지 저장"을 이용
+  if(mode=='share'||(isIOS&&cs)){
+    if(cs){try{await navigator.share({files:[f],title:g.name+' 결과'})}catch(e){}return}
+  }
   const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=fn;document.body.appendChild(a);a.click();a.remove();
-  alert('사진이 저장되었어요 (다운로드 폴더/사진첩 확인)')}
+  toast(mode=='share'?'이 폰은 바로 공유가 안 돼서 사진으로 저장했어요':'📥 사진이 저장됐어요 (갤러리 → 다운로드 앨범)')}
+function toast(t){let d=document.createElement('div');d.textContent=t;d.style.cssText='position:fixed;left:16px;right:16px;bottom:90px;background:#1d2a1d;color:#fff;padding:14px;border-radius:12px;text-align:center;font-size:16px;z-index:99;opacity:.95';document.body.appendChild(d);setTimeout(()=>d.remove(),3000)}
 function vRank(){
   if(edit)return vEdit();
-  if(gsel){const g=D.games.find(x=>x.id==gsel);return`<button class="b g" onclick="gsel=null;render()">← 목록</button><div class="card"><h3>${e(g.name)} <span class="sm">${g.date} · ${Object.keys(g.scores).length}명</span></h3>${seg()}${ranked(g,flt).map(r=>`<div class="li"><div class="rk ${r.rk==1?'r1':''}">${r.rk==1?'🥇':r.rk==2?'🥈':r.rk==3?'🥉':r.rk}</div><div class="m">${e(nm(r.id))}${flt=='all'&&sx(r.id)?` <span class="chip ${sx(r.id)=='여'?'cf':'cm'}">${sx(r.id)} ${ranked(g,sx(r.id)).find(q=>q.id==r.id).rk}위</span>`:''}</div><div class="sc">${r.s}타</div></div>`).join('')||'<div class="sm">해당 참가자가 없어요</div>'}${admin?`<div class="row"><button class="b g" onclick="startEdit('${g.id}')">수정</button><button class="b g" style="color:var(--red)" onclick="delGame('${g.id}')">삭제</button></div>`:''}<div class="sm">동점 시 생년월일이 빠른(연장자) 분이 앞 순위</div><button class="b" style="margin-top:10px" onclick="shot('${g.id}')">📷 결과 사진으로 저장·공유</button></div>`}
+  if(gsel){const g=D.games.find(x=>x.id==gsel);return`<button class="b g" onclick="gsel=null;render()">← 목록</button><div class="card"><h3>${e(g.name)} <span class="sm">${g.date} · ${Object.keys(g.scores).length}명</span></h3>${seg()}${ranked(g,flt).map(r=>`<div class="li"><div class="rk ${r.rk==1?'r1':''}">${r.rk==1?'🥇':r.rk==2?'🥈':r.rk==3?'🥉':r.rk}</div><div class="m">${e(nm(r.id))}${flt=='all'&&sx(r.id)?` <span class="chip ${sx(r.id)=='여'?'cf':'cm'}">${sx(r.id)} ${ranked(g,sx(r.id)).find(q=>q.id==r.id).rk}위</span>`:''}</div><div class="sc">${r.s}타</div></div>`).join('')||'<div class="sm">해당 참가자가 없어요</div>'}${admin?`<div class="row"><button class="b g" onclick="startEdit('${g.id}')">수정</button><button class="b g" style="color:var(--red)" onclick="delGame('${g.id}')">삭제</button></div>`:''}<div class="sm">동점 시 생년월일이 빠른(연장자) 분이 앞 순위</div><div class="row" style="margin-top:10px"><button class="b" onclick="shot('${g.id}','save')">📥 사진 저장</button><button class="b" onclick="shot('${g.id}','share')">💬 공유하기</button></div>${isIOS?'<div class="sm" style="text-align:center">아이폰은 [사진 저장] 후 <b>"이미지 저장"</b>을 누르면 사진첩에 들어가요</div>':''}</div>`}
   const gs=[...D.games].sort((a,b)=>b.date.localeCompare(a.date));
   return(admin?`<button class="b" onclick="startEdit()">＋ 새 대회 입력</button>`:'')+(gs.length?gs.map(g=>{const r=ranked(g)[0];return`<div class="card" onclick="gsel='${g.id}';render()"><b>${e(g.name)}</b> <span class="sm">${g.date} · ${Object.keys(g.scores).length}명</span><div class="sm">🥇 ${e(nm(r.id))} ${r.s}타</div></div>`}).join(''):'<div class="card sm">아직 등록된 대회가 없어요.</div>')}
 function startEdit(id){if(!admin)return;const g=id?D.games.find(x=>x.id==id):null;edit=g?JSON.parse(JSON.stringify(g)):{id:uid(),date:today(),name:'',scores:{},isNew:1};render()}
