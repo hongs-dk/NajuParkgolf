@@ -1,4 +1,4 @@
-const C='pg-v16';
+const C='pg-v17';
 self.addEventListener('install',e=>{self.skipWaiting()});
 self.addEventListener('activate',e=>{e.waitUntil(clients.claim())});
 self.addEventListener('fetch',e=>{
